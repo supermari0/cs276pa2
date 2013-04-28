@@ -3,42 +3,62 @@ import sys
 import os.path
 #import gzip
 from glob import iglob
+from math import log10
+import marshal
 
-unigram_counts = dict()
-bigram_counts = dict()
-term_count = 0
+class LanguageModel:
 
-def build_language_model(training_corpus_dir):
-  build_count_dicts(training_corpus_dir)
-  print unigram_counts
+  def __init__(self):
+    self.unigram_counts = dict()
+    self.bigram_counts = dict()
+    self.term_count = 0
 
-def build_count_dicts(training_corpus_dir):
-  """ Build dictionaries containing counts of unigrams and bigrams in training
-  corpus """
-  global term_count,unigram_counts,bigram_counts
-  for block_fname in iglob( os.path.join( training_corpus_dir, '*.txt' ) ):
-    print >> sys.stderr, 'processing dir: ' + block_fname
-    with open( block_fname ) as f:
-      num_lines = 0
-      for line in f:
-        # remember to remove the trailing \n
-        line = line.rstrip()
-        line = line.rsplit()
-        for i in range(len(line)):
-          term_count += 1
-          word = line[i]
-          if word in unigram_counts:
-            unigram_counts[word] += 1
-          else:
-            unigram_counts[word] = 1
-          if i != 0:
-            bigram = (line[i-1], word)
-            if bigram in bigram_counts:
-              bigram_counts[bigram] += 1
+  def build_language_model(self, training_corpus_dir):
+    """ Computes and saves components necessary for language model (unigram and
+    bigram log probabilities) to disk """
+    self.build_count_dicts(training_corpus_dir)
+
+    unigram_log_probs = dict()
+    bigram_log_probs = dict()
+    for (word, count) in self.unigram_counts.iteritems():
+      unigram_log_probs[word] = log10(count/float(self.term_count))
+    for (bigram, count) in self.bigram_counts.iteritems():
+      bigram_log_probs[bigram] = log10(count/float(self.unigram_counts[bigram[0]]))
+    
+    serialize_data(unigram_log_probs, 'unigramLogProbs')
+    serialize_data(bigram_log_probs, 'bigramLogProbs')
+
+  def build_count_dicts(self, training_corpus_dir):
+    """ Build dictionaries containing counts of unigrams and bigrams in training
+    corpus """
+    for block_fname in iglob( os.path.join( training_corpus_dir, '*.txt' ) ):
+      print >> sys.stderr, 'processing dir: ' + block_fname
+      with open( block_fname ) as f:
+        num_lines = 0
+        for line in f:
+          # remember to remove the trailing \n
+          line = line.rstrip()
+          line = line.rsplit()
+          for i in range(len(line)):
+            self.term_count += 1
+            word = line[i]
+            if word in self.unigram_counts:
+              self.unigram_counts[word] += 1
             else:
-              bigram_counts[bigram] = 1
+              self.unigram_counts[word] = 1
+            if i != 0:
+              bigram = (line[i-1], word)
+              if bigram in self.bigram_counts:
+                self.bigram_counts[bigram] += 1
+              else:
+                self.bigram_counts[bigram] = 1
 
-
+def serialize_data(data, fname):
+  """
+  Writes `data` to a file named `fname`
+  """
+  with open(fname, 'wb') as f:
+    marshal.dump(data, f)
 
 def scan_corpus(training_corpus_dir):
   """
@@ -66,4 +86,4 @@ def read_edit1s():
   return edit1s
 
 if __name__ == '__main__':
-  build_language_model(sys.argv[1])
+  LanguageModel().build_language_model(sys.argv[1])
