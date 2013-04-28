@@ -9,8 +9,16 @@ import marshal
 class LanguageModel:
 
   def __init__(self):
+    # Hold the counts for unigram words and bigram words
     self.unigram_counts = dict()
     self.bigram_counts = dict()
+
+    # Holds an index where each character bigram is the key and the value is a
+    # list of words containing that character bigram. (start, c) indicates that
+    # a word begins with c and (d, end) indicates that a word ends with d.
+    self.bigram_index = dict()
+
+    # Holds a count for the total number of terms in the corpus
     self.term_count = 0
 
   def build_language_model(self, training_corpus_dir):
@@ -27,6 +35,7 @@ class LanguageModel:
     
     serialize_data(unigram_log_probs, 'unigramLogProbs')
     serialize_data(bigram_log_probs, 'bigramLogProbs')
+    serialize_data(self.bigram_index, 'bigramIndex')
 
   def build_count_dicts(self, training_corpus_dir):
     """ Build dictionaries containing counts of unigrams and bigrams in training
@@ -42,6 +51,22 @@ class LanguageModel:
           for i in range(len(line)):
             self.term_count += 1
             word = line[i]
+
+            # Add word to bigram index
+            for j in range(len(word)):
+              char = word[j]
+              if j != 0:
+                prevChar = word[j-1]
+              else:
+                prevChar = 'START'
+              charBigram = (prevChar, char)
+
+              if charBigram in bigram_index:
+                bigram_index[charBigram].add(word)
+              else:
+                bigram_index[charBigram] = set(word)
+
+            # Increment word counts
             if word in self.unigram_counts:
               self.unigram_counts[word] += 1
             else:
