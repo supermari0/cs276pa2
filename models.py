@@ -24,6 +24,10 @@ class LanguageModel:
   def build_language_model(self, training_corpus_dir):
     """ Computes and saves components necessary for language model (unigram and
     bigram log probabilities) to disk """
+
+    #TODO Need to reduce amount of time this takes to <1m. Possible strategies
+    # include moving probability calculations and bigram indexing for
+    # correction stage.
     self.build_count_dicts(training_corpus_dir)
 
     unigram_log_probs = dict()
@@ -43,7 +47,6 @@ class LanguageModel:
     for block_fname in iglob( os.path.join( training_corpus_dir, '*.txt' ) ):
       print >> sys.stderr, 'processing dir: ' + block_fname
       with open( block_fname ) as f:
-        num_lines = 0
         for line in f:
           # remember to remove the trailing \n
           line = line.rstrip()
@@ -52,19 +55,13 @@ class LanguageModel:
             self.term_count += 1
             word = line[i]
 
-            # Add word to bigram index
-            for j in range(len(word)):
-              char = word[j]
-              if j != 0:
-                prevChar = word[j-1]
+            # Add current word to the bigram index
+            word_bigrams = extract_bigrams(word)
+            for bigram in word_bigrams:
+              if bigram in self.bigram_index:
+                self.bigram_index[bigram].add(word)
               else:
-                prevChar = 'START'
-              charBigram = (prevChar, char)
-
-              if charBigram in bigram_index:
-                bigram_index[charBigram].add(word)
-              else:
-                bigram_index[charBigram] = set(word)
+                self.bigram_index[bigram] = set(word)
 
             # Increment word counts
             if word in self.unigram_counts:
@@ -78,26 +75,27 @@ class LanguageModel:
               else:
                 self.bigram_counts[bigram] = 1
 
+def extract_bigrams(word):
+  """Extracts all bigrams from a given word and returns them as a set."""
+  word_bigrams = set()
+  for j in range(len(word)):
+    char = word[j]
+    if j != 0:
+      prevChar = word[j-1]
+    else:
+      prevChar = 'START'
+    word_bigrams.add((prevChar, char))
+
+  # Add end bigram
+  word_bigrams.add((char, 'END'))
+  return word_bigrams 
+
 def serialize_data(data, fname):
   """
   Writes `data` to a file named `fname`
   """
   with open(fname, 'wb') as f:
     marshal.dump(data, f)
-
-def scan_corpus(training_corpus_dir):
-  """
-  Scans through the training corpus and counts how many lines of text there are
-  """
-  for block_fname in iglob( os.path.join( training_corpus_dir, '*.txt' ) ):
-    print >> sys.stderr, 'processing dir: ' + block_fname
-    with open( block_fname ) as f:
-      num_lines = 0
-      for line in f:
-        # remember to remove the trailing \n
-        line = line.rstrip()
-        num_lines += 1
-      print >> sys.stderr, 'Number of lines in ' + block_fname + ' is ' + str(num_lines)
 
 def read_edit1s():
   """
