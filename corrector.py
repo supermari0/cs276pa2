@@ -22,9 +22,8 @@ class SpellCorrector:
 
     for word in query_words:
       candidates = self.gen_candidates(word)
-    # TODO: Generate candidate set.
 
-    # Score in candidate set based on whether using empirical or uniform edit
+    # TODO: Score in candidate set based on whether using empirical or uniform edit
     # distance model.
 
   # Generates list of candidates that could replace word
@@ -48,6 +47,11 @@ class SpellCorrector:
         candidates.append(candidate)
 
     print 'candidates for ' + word + ':' + str(candidates)
+    # TODO filter candidates based on edit distance (only 1 or 2 edits allowed)
+    # TODO figure out how to take care of 'space' issue (how to generate isaac
+    # newton as candidate for isaacnewton) -- see helpful hint under "candidate
+    # generation" section of handout
+    # TODO don't forget to take care of case where there are no candidates
 
   def read_query_data(self, queries_loc):
     """
