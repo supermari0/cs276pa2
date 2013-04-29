@@ -53,6 +53,7 @@ class SpellCorrector:
     # generation" section of handout
     # TODO don't forget to take care of case where there are no candidates
 
+
   def read_query_data(self, queries_loc):
     """
     all three files match with corresponding queries on each line
@@ -84,10 +85,35 @@ def unserialize_data(fname):
   with open(fname, 'rb') as f:
     return marshal.load(f)
 
+# Calculates Levenshtein-Damerau edit distance between word 1 and word 2.
+def find_edit_distance(word1, word2):
+  # Save rows of matrix rather than whole matrix for efficiency
+  last_row = None
+  this_row = range(1, len(word2) + 1) + [0]
+  # Cost is 0 if letters are equal, 1 otherwise
+  cost = 0
+  for i in range(len(word1)):
+    # Row reassignment on new row
+    last_last_row = last_row
+    last_row = this_row
+    this_row = [0] * len(word2) + [i+1]
+    for j in range(len(word2)):
+      if word1[i] == word2[j]:
+        cost = 0
+      else:
+        cost = 1
+      this_row[j] = min(last_row[j] + 1, this_row[j-1] + 1, last_row[j-1] +
+        cost)
+      # Deal with transpositions
+      if i>0 and j>0 and word1[i] == word2[j-1] and word1[i-1] == word2[j]:
+        this_row[j] = min(this_row[j], last_last_row[j-2] + 1)
+
+  return this_row[len(word2) - 1]
 if __name__ == '__main__':
-  queries_loc = sys.argv[2]
-  sc = SpellCorrector()
-  queries = sc.read_query_data(queries_loc)
-  print 'done reading query data'
-  for query in queries:
-    corrected = sc.correct_query(query)
+  print(find_edit_distance('ass', 'sas'))
+  #queries_loc = sys.argv[2]
+  #sc = SpellCorrector()
+  #queries = sc.read_query_data(queries_loc)
+  #print 'done reading query data'
+  #for query in queries:
+  #  corrected = sc.correct_query(query)
