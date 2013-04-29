@@ -91,4 +91,3 @@ if __name__ == '__main__':
   print 'done reading query data'
   for query in queries:
     corrected = sc.correct_query(query)
-    break
