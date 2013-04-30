@@ -30,20 +30,20 @@ class SpellCorrector:
       best_score = None
       best_candidate = word
       for (candidate, edit_dist) in candidates:
-        if prevWord is not None:
-          if (prevWord, candidate) not in self.bigram_probs:
-            self.bigram_probs[(prevWord, candidate)] = 0
-          #TODO is this score ok?
-          score = math.log10(0.2 * self.unigram_probs[candidate] + 0.8 *
-            self.bigram_probs[(prevWord, candidate)]) + math.log10(
-            (0.01 ** edit_dist) * (0.99 ** (len(word) - edit_dist)))
+        # Not first word of query
+        if prevWord is None or (prevWord, candidate) not in self.bigram_probs:
+          bigram_prob = 0
         else:
-          score = self.unigram_probs[candidate]
+          bigram_prob = self.bigram_probs[(prevWord, candidate)] 
+        #TODO is this score ok?
+        score = math.log10(0.2 * self.unigram_probs[candidate] + 0.8 *
+          bigram_prob) + math.log10(
+          (0.1 ** edit_dist) * (0.9 ** (len(word) - edit_dist)))
         if best_score is None or score > best_score:
           best_score = score
           best_candidate = candidate
-          prevWord = candidate
       new_query.append(best_candidate)
+      prevWord = best_candidate
     correct_query = ' '.join(new_query)
     return correct_query
 
