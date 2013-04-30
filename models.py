@@ -12,6 +12,7 @@ class LanguageModel:
     # Hold the counts for unigram words and bigram words
     self.unigram_counts = dict()
     self.bigram_counts = dict()
+    self.len_dict = dict()
 
     # Holds an index where each character bigram is the key and the value is a
     # list of words containing that character bigram. (start, c) indicates that
@@ -30,16 +31,21 @@ class LanguageModel:
     # correction stage.
     self.build_count_dicts(training_corpus_dir)
 
-    unigram_log_probs = dict()
-    bigram_log_probs = dict()
+    unigram_probs = dict()
+    bigram_probs = dict()
     for (word, count) in self.unigram_counts.iteritems():
-      unigram_log_probs[word] = log10(count/float(self.term_count))
+      unigram_probs[word] = count/float(self.term_count)
+      if len(word) in self.len_dict:
+        self.len_dict[len(word)].add(word)
+      else:
+        self.len_dict[len(word)] = set(word)
     for (bigram, count) in self.bigram_counts.iteritems():
-      bigram_log_probs[bigram] = log10(count/float(self.unigram_counts[bigram[0]]))
-    print unigram_log_probs 
-    #serialize_data(unigram_log_probs, 'unigramLogProbs')
-    #serialize_data(bigram_log_probs, 'bigramLogProbs')
-    #serialize_data(self.bigram_index, 'bigramIndex')
+      bigram_probs[bigram] = count/float(self.unigram_counts[bigram[0]])
+    print unigram_probs 
+    serialize_data(unigram_probs, 'unigramProbs')
+    serialize_data(bigram_probs, 'bigramProbs')
+    serialize_data(self.bigram_index, 'bigramIndex')
+    serialize_data(self.len_dict, 'lenDict')
 
   def build_count_dicts(self, training_corpus_dir):
     """ Build dictionaries containing counts of unigrams and bigrams in training
@@ -74,6 +80,7 @@ class LanguageModel:
                 self.bigram_counts[bigram] += 1
               else:
                 self.bigram_counts[bigram] = 1
+
 class EditModel:
   
   def __init__(self):
@@ -137,6 +144,8 @@ class EditModel:
     serialize_data(logDeletion, 'deletionDict')  
     serialize_data(logSubstitution, 'substitutionDict')
     serialize_data(logTransposition, 'TranspositionDict')  
+    serialize_data(self.unigram_counts, 'unigramCounts')
+    serialize_data(self.bigram_counts, 'bigramCounts')
         
   def find_edit(self, pair): 
     right = pair[1]
