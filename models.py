@@ -74,6 +74,121 @@ class LanguageModel:
                 self.bigram_counts[bigram] += 1
               else:
                 self.bigram_counts[bigram] = 1
+class EditModel:
+  
+  def __init__(self):
+    # build count matrices all initialized to 1's
+    self.unigram_counts = dict()
+    self.bigram_counts = dict()
+    self.insertion = dict()
+    self.deletion = dict()
+    self.substitution = dict()
+    self.transposition = dict()
+    
+  def build_edit_model(self, edit1s_loc):
+    list = read_edit1s(edit1s_loc)
+    for pair in list:
+      edit = self.find_edit(pair)
+      if not edit: continue
+      type = edit[0]
+      char_1 = edit[1]
+      char_2 = edit[2]
+      if type == 'i':
+        matrix = self.insertion
+      elif type == 'd':
+        matrix = self.deletion
+      elif type == 's':
+        matrix = self.substitution
+      elif type == 't':
+        matrix = self.transposition
+      if not char_1 in matrix:
+        matrix[char_1] = dict()
+      if not char_2 in matrix[char_1]:  
+        matrix[char_1][char_2] = 1
+      else: matrix[char_1][char_2] += 1  
+    
+    logInsertion = dict()
+    logDeletion = dict()
+    logSubstitution = dict()
+    logTransposition = dict()
+    A = len(self.unigram_counts)
+    B = len(self.bigram_counts)
+    for (char_1, dictionary) in self.insertion.iteritems():
+      logInsertion[char_1] = dict()
+      for (char_2, count) in dictionary.iteritems():
+        p = (count + 1)/float(self.unigram_counts[char_1] + A)
+        logInsertion[char_1][char_2] = log10(p)
+    for (char_1, dictionary) in self.deletion.iteritems():
+      logDeletion[char_1] = dict()
+      for (char_2, count) in dictionary.iteritems():
+        p = (count + 1)/float(self.bigram_counts[char_1 + char_2] + B)
+        logDeletion[char_1][char_2] = log10(p)    
+    for (char_1, dictionary) in self.substitution.iteritems():
+      logSubstitution[char_1] = dict()
+      for (char_2, count) in dictionary.iteritems():
+        p = (count + 1)/float(self.unigram_counts[char_1] + A)
+        logSubstitution[char_1][char_2] = log10(p)  
+    for (char_1, dictionary) in self.transposition.iteritems():
+      logTransposition[char_1] = dict()
+      for (char_2, count) in dictionary.iteritems():
+        p = (count + 1)/float(self.bigram_counts[char_1 + char_2] + B)
+        logTransposition[char_1][char_2] = log10(p)        
+    serialize_data(logInsertion, 'insertionDict')
+    serialize_data(logDeletion, 'deletionDict')  
+    serialize_data(logSubstitution, 'substitutionDict')
+    serialize_data(logTransposition, 'TranspositionDict')  
+        
+  def find_edit(self, pair): 
+    right = pair[1]
+    wrong = pair[0]
+        
+    # update unigram, bigram counts for first letter(s)   
+    start_unigram = '#'
+    if start_unigram in self.unigram_counts:
+      self.unigram_counts[start_unigram] += 1
+    else: self.unigram_counts[start_unigram] = 1 
+    start_bigram = '#' + right[0] 
+    if start_bigram in self.bigram_counts:
+      self.bigram_counts[start_bigram] += 1
+    else: self.bigram_counts[start_bigram] = 1
+    
+    ret = None
+    for i, ch in enumerate(right): 
+      if ch in self.unigram_counts:
+        self.unigram_counts[ch] += 1
+      else: self.unigram_counts[ch] = 1  
+      if i < len(right) - 1:
+        bigram = right[i:i+2] 
+        if bigram in self.bigram_counts:
+          self.bigram_counts[bigram] += 1
+        else: self.bigram_counts[bigram] = 1
+      if i < len(wrong) and right[i] == wrong[i]: continue  
+      if len(right) > len(wrong):
+        try_delete = right[:i] + right[i+1:]
+        if try_delete == wrong:
+          #edge case - first character deleted
+          if i == 0: ret = ('d', '#', ch)
+          else: ret = ('d', right[i-1], ch)  
+      elif len(right) == len(wrong):   
+        if i < len(right) - 1:
+          if i < len(right) - 2:
+            try_transposition = right[:i] + right[i+1] + right[i] + right[i+2:]
+          else: try_transposition = right[:i] + right[i+1] + right[i]
+          if try_transposition == wrong:
+            ret = ('t', ch, right[i+1])   
+        letter = wrong[i]
+        try_substitution = right[:i] + letter + right[i+1:]
+        if try_substitution == wrong:
+          ret = ('s', ch, letter)
+      else:
+        letter = wrong[i]
+        try_insert = right[:i] + letter + right[i:]
+        if try_insert == wrong:
+          if i == 0: ret = ('i', '#', letter)
+          else: ret = ('i', right[i-1], letter)
+    if ret: return ret      
+    elif right == wrong: return None
+    else: return ('i', right[-1], wrong[-1])
 
 def extract_bigrams(word):
   """Extracts all bigrams from a given word and returns them as a set."""
@@ -110,3 +225,4 @@ def read_edit1s():
 
 if __name__ == '__main__':
   LanguageModel().build_language_model(sys.argv[1])
+  # EditModel().build_edit_model(todo)
