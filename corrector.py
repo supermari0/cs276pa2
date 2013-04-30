@@ -20,11 +20,28 @@ class SpellCorrector:
   def correct_query(self, query):
     query_words = query.rsplit()
 
+    new_query = []
+
+    prevWord = None
     for word in query_words:
       candidates = self.gen_candidates(word)
-
-    # TODO: Score in candidate set based on whether using empirical or uniform edit
-    # distance model.
+      best_score = None
+      best_candidate = word
+      for (candidate, edit_dist) in candidates:
+        if prevWord is not None:
+          if (prevWord, candidate) not in self.bigram_log_probs:
+            self.bigram_log_probs[(prevWord, candidate)] = 0
+          score = (0.2 * self.unigram_log_probs[candidate] + 0.8 *
+            self.bigram_log_probs[(prevWord, candidate)] + 0.1 ** edit_dist)
+        else:
+          score = self.unigram_log_probs[candidate]
+        if best_score is None or score > best_score:
+          best_score = score
+          best_candidate = candidate
+          prevWord = candidate
+      new_query.append(best_candidate)
+    correct_query = ' '.join(new_query)
+    return correct_query
 
   # Generates list of candidates that could replace word
   def gen_candidates(self, word):
@@ -43,15 +60,15 @@ class SpellCorrector:
       bigrams_in_candidate = extract_bigrams(candidate)
       all_bigrams = bigrams_in_candidate | bigrams
       jaccard = float(overlap) / len(all_bigrams)
-      if jaccard > 0.5:
-        candidates.append(candidate)
+      edit_dist = find_edit_distance(word, candidate)
+      if jaccard > 0.5 and edit_dist <= 2:
+        candidates.append((candidate, edit_dist))
 
-    print 'candidates for ' + word + ':' + str(candidates)
-    # TODO filter candidates based on edit distance (only 1 or 2 edits allowed)
     # TODO figure out how to take care of 'space' issue (how to generate isaac
     # newton as candidate for isaacnewton) -- see helpful hint under "candidate
     # generation" section of handout
     # TODO don't forget to take care of case where there are no candidates
+    return candidates
 
 
   def read_query_data(self, queries_loc):
@@ -109,11 +126,16 @@ def find_edit_distance(word1, word2):
         this_row[j] = min(this_row[j], last_last_row[j-2] + 1)
 
   return this_row[len(word2) - 1]
+
 if __name__ == '__main__':
-  print(find_edit_distance('ass', 'sas'))
-  #queries_loc = sys.argv[2]
-  #sc = SpellCorrector()
-  #queries = sc.read_query_data(queries_loc)
-  #print 'done reading query data'
-  #for query in queries:
-  #  corrected = sc.correct_query(query)
+  queries_loc = sys.argv[2]
+  sc = SpellCorrector()
+  queries = sc.read_query_data(queries_loc)
+  i = 1
+  for query in queries:
+    corrected = sc.correct_query(query)
+    print >> sys.stderr, 'query ' + str(i)
+    print >> sys.stderr, 'original: ' + query + ', fixed: ' + corrected
+    print corrected
+    i+= 1
+    

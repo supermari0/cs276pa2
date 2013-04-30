@@ -36,10 +36,10 @@ class LanguageModel:
       unigram_log_probs[word] = log10(count/float(self.term_count))
     for (bigram, count) in self.bigram_counts.iteritems():
       bigram_log_probs[bigram] = log10(count/float(self.unigram_counts[bigram[0]]))
-    
-    serialize_data(unigram_log_probs, 'unigramLogProbs')
-    serialize_data(bigram_log_probs, 'bigramLogProbs')
-    serialize_data(self.bigram_index, 'bigramIndex')
+    print unigram_log_probs 
+    #serialize_data(unigram_log_probs, 'unigramLogProbs')
+    #serialize_data(bigram_log_probs, 'bigramLogProbs')
+    #serialize_data(self.bigram_index, 'bigramIndex')
 
   def build_count_dicts(self, training_corpus_dir):
     """ Build dictionaries containing counts of unigrams and bigrams in training
