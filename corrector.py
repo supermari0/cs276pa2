@@ -3,8 +3,8 @@ import sys
 from models import extract_bigrams
 from collections import defaultdict
 import marshal
-import math
 import itertools
+from math import log10
 
 queries_loc = 'data/queries.txt'
 gold_loc = 'data/gold.txt'
@@ -38,12 +38,22 @@ class SpellCorrector:
     for i in iterator:
       word = query_words[i]
 
-      # Check if word is misspelled (not in our dictionary)
-      if word in self.unigram_probs:
+      if word in self.unigram_probs and edit_type == 'empirical':
+        if prevWord is None or (prevWord, candidate) not in self.bigram_probs:
+          bigram_prob = 0
+        else:
+          bigram_prob = self.bigram_probs[(prevWord, candidate)] 
+        score = log10(0.2 * self.unigram_probs[word] + 0.8 *
+          bigram_prob)
+        if score > -3:
+          new_query.append(word)
+          prevWord = word
+          continue
+      elif word in self.unigram_probs:
         new_query.append(word)
         prevWord = word
         continue
-       
+      
       candidates = self.gen_candidates(word, edit_type)
       best_score = None
       best_candidate = word
@@ -54,10 +64,10 @@ class SpellCorrector:
         else:
           bigram_prob = self.bigram_probs[(prevWord, candidate)] 
 
-        score = math.log10(0.2 * self.unigram_probs[candidate] + 0.8 *
+        score = log10(0.2 * self.unigram_probs[candidate] + 0.8 *
           bigram_prob) 
         if edit_type == 'uniform':
-          score += math.log10(
+          score += log10(
           (0.1 ** edit_dist) * (0.9 ** (len(word) - edit_dist)))
         else:
           score += edit_dist
@@ -165,25 +175,25 @@ class SpellCorrector:
     
     if which == 'i':
       if char_1 in self.insertion_dict and char_2 in self.insertion_dict[char_1]:
-        return self.insertion_dict[char_1][char_2]
-      else: return log10(1/float(self.unigram_counts[char_1] + A))  
+        ret = self.insertion_dict[char_1][char_2]
+      else: ret = log10(1/float(self.unigram_counts[char_1] + A))  
       
     if which == 'd':
       if char_1 in self.deletion_dict and char_2 in self.deletion_dict[char_1]:
-        return self.deletion_dict[char_1][char_2]
-      else: return log10(1/float(self.bigram_counts[char_1 + char_2] + B))  
+        ret = self.deletion_dict[char_1][char_2]
+      else: ret = log10(1/float(self.bigram_counts[char_1 + char_2] + B))  
         
     if which == 's':
       if char_1 in self.substitution_dict and char_2 in self.substitution_dict[char_1]:
-        return self.substitution_dict[char_1][char_2]
-      else: return log10(1/float(self.unigram_counts[char_1] + A))       
+        ret = self.substitution_dict[char_1][char_2]
+      else: ret = log10(1/float(self.unigram_counts[char_1] + A))       
       
     if which == 't':
       if char_1 in self.transposition_dict and char_2 in self.transposition_dict[char_1]:
-        return self.transposition_dict[char_1][char_2]
-      else: return log10(1/float(self.bigram_counts[char_1 + char_2] + B))  
+        ret = self.transposition_dict[char_1][char_2]
+      else: ret = log10(1/float(self.bigram_counts[char_1 + char_2] + B))  
 
-
+    return 0.8 * ret + 0.2 *(-1)
 
   def read_query_data(self, queries_loc):
     """
