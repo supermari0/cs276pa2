@@ -26,6 +26,10 @@ class SpellCorrector:
 
     prevWord = None
     for word in query_words:
+      if word in self.unigram_probs:
+        new_query.append(word)
+        prevWord = word
+        continue
       candidates = self.gen_candidates(word)
       best_score = None
       best_candidate = word
@@ -129,20 +133,25 @@ def find_edit_distance(word1, word2):
     last_last_row = last_row
     last_row = this_row
     this_row = [0] * len(word2) + [i+1]
+    row_min = 100
     for j in range(len(word2)):
-      if this_row[j-1] > 2:
-        # Stop here if edit distance is too big
-        return 3
       if word1[i] == word2[j]:
         cost = 0
       else:
         cost = 1
+
       this_row[j] = min(last_row[j] + 1, this_row[j-1] + 1, last_row[j-1] +
         cost)
       # Deal with transpositions
       if i>0 and j>0 and word1[i] == word2[j-1] and word1[i-1] == word2[j]:
         this_row[j] = min(this_row[j], last_last_row[j-2] + 1)
 
+      if this_row[j] < row_min:
+        row_min = this_row[j]
+    print 'row min' + str(row_min)
+    if row_min > 2:
+      return 3
+      
   return this_row[len(word2) - 1]
 
 if __name__ == '__main__':
