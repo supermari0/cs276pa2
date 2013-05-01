@@ -26,9 +26,6 @@ class LanguageModel:
     """ Computes and saves components necessary for language model (unigram and
     bigram log probabilities) to disk """
 
-    #TODO Need to reduce amount of time this takes to <1m. Possible strategies
-    # include moving probability calculations and bigram indexing for
-    # correction stage.
     self.build_count_dicts(training_corpus_dir)
 
     unigram_probs = dict()
@@ -41,7 +38,6 @@ class LanguageModel:
         self.len_dict[len(word)] = set(word)
     for (bigram, count) in self.bigram_counts.iteritems():
       bigram_probs[bigram] = count/float(self.unigram_counts[bigram[0]])
-    print unigram_probs 
     serialize_data(unigram_probs, 'unigramProbs')
     serialize_data(bigram_probs, 'bigramProbs')
     serialize_data(self.bigram_index, 'bigramIndex')
@@ -51,7 +47,6 @@ class LanguageModel:
     """ Build dictionaries containing counts of unigrams and bigrams in training
     corpus """
     for block_fname in iglob( os.path.join( training_corpus_dir, '*.txt' ) ):
-      print >> sys.stderr, 'processing dir: ' + block_fname
       with open( block_fname ) as f:
         for line in f:
           # remember to remove the trailing \n
@@ -221,7 +216,7 @@ def serialize_data(data, fname):
   with open(fname, 'wb') as f:
     marshal.dump(data, f)
 
-def read_edit1s():
+def read_edit1s(edit1s_loc):
   """
   Returns the edit1s data
   It's a list of tuples, structured as [ .. , (misspelled query, correct query), .. ]
@@ -233,5 +228,5 @@ def read_edit1s():
   return edit1s
 
 if __name__ == '__main__':
-  LanguageModel().build_language_model(sys.argv[1])
-  # EditModel().build_edit_model(todo)
+  #LanguageModel().build_language_model(sys.argv[1])
+  EditModel().build_edit_model(sys.argv[2])
